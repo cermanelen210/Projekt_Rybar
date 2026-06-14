@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32.SafeHandles;
 using System.Numerics;
+using System.Text.Json;
 
 namespace Projekt_Rybar
 {
@@ -8,61 +9,66 @@ namespace Projekt_Rybar
         static void Main(string[] args)
         {
             bool running = true;
-            Player player = new Player();
-            do
-            {
-                Console.Clear();
-                TextMenu();
-                char akce = Char.ToUpper(Console.ReadKey().KeyChar);
-                Console.Clear();
-                switch (akce)
-                {
-                    case 'R':
-                        CatchFish(player);
-                        break;
-                    case 'I':
-                        ShowInventory(player);
-                        break;
-                    case 'E':
-                        (player.coins, player.inventory) = ProdatRyby(player.coins, player.inventory);
-                        break;
-                    case 'K':
-                        Catalog(player.catalog);
-                        break;
-                    case 'S':
-                        // ulozit a ukoncit
-                        running = false;
-                        break;
-                    default:
-                        Console.WriteLine("error");
-                        Console.ReadLine();
-                        break;
-                }
 
-            } while (running);           
+            Player player;
+            if (File.Exists("player.json"))
+            {
+                string jsonString = File.ReadAllText("player.json");
+                player = JsonSerializer.Deserialize<Player>(jsonString) ?? new Player();
+            }
+            else
+            {
+                player = new Player();
+            }
+           
+                do
+                {
+                    Console.Clear();
+
+                    TextMenu();
+                    char akce = Char.ToUpper(Console.ReadKey().KeyChar);
+                    Console.Clear();
+                    switch (akce)
+                    {
+                        case 'R':
+                            CatchFish(player);
+                            break;
+                        case 'I':
+                            ShowInventory(player);
+                            break;
+                        case 'E':
+                            (player.coins, player.inventory) = ProdatRyby(player.coins, player.inventory);
+                            break;
+                        case 'K':
+                            Catalog(player.catalog);
+                            break;
+                        case 'S':
+                            string jsonString = JsonSerializer.Serialize(player);
+                            File.WriteAllText("player.json", jsonString);
+                            running = false;
+                            break;
+                        default:
+                            Console.WriteLine("error");
+                            Console.ReadLine();
+                            break;
+                    }
+
+                } while (running);           
         }
         
+
         static void Catalog(Dictionary<string, string> catalog)
         {
             Console.Clear();
             foreach (string fishName in Fish.allNames)
             {
-                bool discovered = catalog.Keys.Contains(fishName);
+                bool discovered = catalog.ContainsKey(fishName);
 
                 if (discovered)
                 {
-                    Fish fish = new Fish();
-
-                    foreach (string fish_catalog in catalog.Keys)
-                    {
-                        if (fish_catalog == fishName)
-                        {
-                            fish.name = fish_catalog;
-                            fish.rarita = fish_catalog;
-                            break;
-                        }
-                    }
-                    switch (fish.rarita)
+                    string rarita = catalog[fishName];
+                    
+                    switch (rarita)
                     {
                         case "common":
                             Console.ForegroundColor = ConsoleColor.Green;
@@ -86,7 +92,10 @@ namespace Projekt_Rybar
                 }
 
                 Console.ResetColor();
+               
+                    
             }
+            Console.WriteLine("------------------------------------------");
             bool running = true;
             Console.WriteLine("  M - Menu");
             do
@@ -106,7 +115,7 @@ namespace Projekt_Rybar
         {
             Console.Clear();
             Console.WriteLine("------------------------------------------");
-            Console.WriteLine("Vítej v rybárně\nZde můžeš prodat své ryby za coiny\n  Jakou Rybu/y chceš prodat? \n \n  M - Menu ");
+            Console.WriteLine("Vítej v rybárně\nZde můžeš prodat své ryby za coiny\n  Jakou Rybu/y chceš prodat? \n------------------------------------------\n  M - Menu ");
             Console.WriteLine("------------------------------------------");
             bool rybu_nemas = true;
             do
@@ -137,8 +146,8 @@ namespace Projekt_Rybar
                 }
                 else if (choosen_fish.same == 1)
                 {
-
-                    Console.WriteLine("Opravdu chceš rybu prodat?\n  A - Ano\n  N - Ne");
+                    Console.WriteLine("------------------------------------------");
+                    Console.WriteLine("Opravdu chceš rybu prodat?\n  A - Ano\n  N - Ne\n------------------------------------------");
                     bool wrong_key = false;
                     do
                     {
@@ -163,7 +172,7 @@ namespace Projekt_Rybar
                     } while (wrong_key);
                 }else
                 {
-                    Console.WriteLine($"Kolik ryb stejného druhu chceš prodat?\n  (1 - {choosen_fish.same})");
+                    Console.WriteLine($"Kolik ryb stejného druhu chceš prodat?\n  (1 - {choosen_fish.same})\n------------------------------------------");
                     int zad_cislo = 0;
                     while ((!int.TryParse(Console.ReadLine(),out zad_cislo))|| zad_cislo <1 ||zad_cislo > choosen_fish.same)
                     {
@@ -173,17 +182,20 @@ namespace Projekt_Rybar
                     Console.WriteLine("Ryba prodána");
                     coins += (choosen_fish.cost*zad_cislo);
                     Console.WriteLine($"+ {choosen_fish.cost*zad_cislo} coinu");
+                    if (choosen_fish.same - zad_cislo == 0)
+                    {
+                        inventory.Remove(choosen_fish);
+                    }
                     choosen_fish.same -= zad_cislo;
                     for (int i = 0; i < inventory.Count; i++)
                     {
-                        if (choosen_fish.name == inventory[i].name && choosen_fish.same !=0)
+                        if (choosen_fish.name == inventory[i].name)
                         {
                             inventory.Remove(inventory[i]);
                             inventory.Add(choosen_fish);
                         }
-                        else if(choosen_fish.same == 0)
+                        else 
                         {
-                            inventory.Remove(inventory[i]);
                         }
                        
                     }
@@ -226,8 +238,10 @@ namespace Projekt_Rybar
                 if (!found)
                 {
                     player.inventory.Add(newFish);
-                    //player.catalog_.Add(newFish.name);
-                    player.catalog.Add(newFish.name, newFish.rarita);
+                    if (!player.catalog.ContainsKey(newFish.name))
+                    {
+                        player.catalog.Add(newFish.name, newFish.rarita);
+                    }
                 }
                 Console.WriteLine("-----------------");
                 Console.WriteLine("  R - Chytit rybu \n  M - Menu");

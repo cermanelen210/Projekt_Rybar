@@ -9,11 +9,10 @@ namespace Projekt_Rybar
 {
     internal class Player
     {
-        public int coins = 0; //cislo coinu za prodani ryby
+        public int coins { get; set; } = 0;
+        public List<Fish> inventory { get; set; } = new();
+        public Dictionary<string, string> catalog { get; set; } = new();
 
-        public List<Fish> inventory = new List<Fish>(); //inventar, kam se ulozej vsechny chycene dosud neporane ryby
-        public List<string> catalog_ = new List<string>();
-        public Dictionary<string, string> catalog = new Dictionary<string, string>();
         
         public Player()
         {
